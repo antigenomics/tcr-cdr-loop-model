@@ -1,6 +1,84 @@
 # Loop coordinates prediction model
 
+Notebooks:
+
+- `extract.ipynb` - 
+
+- `eda.ipynb` - 
+
+- `aa_predict.ipynb` - 
+
+- `aa_predict_clust.ipynb` - 
+
+- `cluster.ipynb` - 
+
+- `coord_predict.ipynb` - 
+
+Folders:
+
+- `wisp` - folder with code for model training.
+
+- `data` - folder with datasets.
+
+- `loss` - visualisation of training losses.
+
+- `pred` - visualisation of predicted coordinates.
+
+- `plots` - various plots.
+
+
+## 0. Preprocessing
+
+Data is highly variable due to different structures and stochasticity in the optimization procedure (length - 11, X and Y coordinates, distribution of differences among the max and min values per position):
+
+<img src="plots/maxmin_len11_x.png">
+
+<img src="plots/maxmin_len11_y.png">
+
+There are no critical differences for CDR sequences, therefore for each sequence we chose the mean coordinates. However, canonical and putative sequences are much more diverse and more sophisticated procedure is needed. For each unique sequence we choose each other kmer with differences in MSE and minimal MSE (per sequence) lower than 0.005:
+
+<img src="plots/maxmin_len11_x_proc.png">
+
+Then we choose the mean coordinate values (like in CDRs) per sequence.
+
+Numbers of the sequences / unique sequences per length per data type:
+
+```
+CDR
+L all uniq
+10 1  1
+11 21 14
+12 32 16
+13 69 37
+14 46 31
+15 42 25
+16 32 11
+
+Canonical
+L all uniq
+10 176 61
+11 910 185
+12 452 113
+13 395 121
+14 167 55
+15 109 42
+16 80  15
+
+Putative
+L all uniq
+10 7219   1648
+11 179175 23598
+12 146165 17408
+13 74735  10167
+14 7177   1463
+15 7357   1254
+16 2697   481
+```
+
+
+
 ## 1. Coordinates and models
+
 **window** - sliding window, predict the coordinate in the centre of the window.
 
 **directional / bidirectional** - recurrent neural networks.
@@ -20,7 +98,7 @@ Surround sequences by null symbols.
 First and last amino acids depends on each other other. It is better than the naive approach:
 <img src="loss/loss_x_dense_4_4_comparison_clust_and_onehot_1200it.png" width="80%">
 
-### 1.3 Positional / length-positional
+### 1.3. Positional / length-positional
 
 Add position or position/length for each amino acid to each dense layer. It helps:
 
@@ -40,7 +118,7 @@ GRU models, 1500 iterations:
 GRU models, 1500 iterations:
 <img src="loss/comparison/loss_x_cnnpos_comparison.png" width="80%">
 
-### 1.6. Difference among coordinates (left-to-right / right-ot-left directions)
+### 1.6. Difference among coordinates (left-to-right / right-to-left directions)
 
 #### Naive prediction
 
