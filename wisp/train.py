@@ -1,5 +1,13 @@
 from __future__ import print_function, division
+
 from collections import Counter
+import os
+
+import matplotlib
+matplotlib.use('Agg')
+import matplotlib.pyplot as plt
+import seaborn as sns
+sns.set_style("whitegrid") 
 
 from keras.models import Sequential, Model
 from keras.layers import Dense, Dropout, BatchNormalization, concatenate, Input, LSTM, GRU, Conv1D, add, Flatten
@@ -54,7 +62,11 @@ class Beholder:
     For different types of data use multiple Beholders.
     """
     
-    def __init__(self, seq_len, train_data, test_data, input_shape, data_name):
+    def __init__(self, folderpath, seq_len, train_data, test_data, input_shape, data_name):
+        self._folderpath = "models/" + folderpath
+        if not os.path.exists(self._folderpath):
+            os.makedirs(self._folderpath)
+        
         self.models = {}
         self.history = {}
         self.test_df = pd.DataFrame()
@@ -72,6 +84,12 @@ class Beholder:
         self._X_test = test_data[0]
         self._y_test = test_data[1]
         self._seq_len = seq_len
+        
+        self._best_model = ""
+        self._best_model_err = 1000
+        
+        print("[Beholder] Train data samples:", self._y_train.shape[0])
+        print("[Beholder] Test data samples:", self._y_test.shape[0])
         
     
     def add_model(self, model_type, layers, n_clust=0, fading=False):
@@ -92,12 +110,16 @@ class Beholder:
         reduce_lr = ReduceLROnPlateau(monitor='val_loss', factor=0.2, patience=3, cooldown=1, min_lr=0.0005)
         print("[Beholder] Training...")
         for model_name in self.models:
-            print(model_name, end="\t")
+            print(" --", model_name, end="\t")
             self.history[model_name] = self.models[model_name].fit(self._X_train, self._y_train, 
                                                                    batch_size=batch_size, verbose=verbose, epochs=n_epochs, 
                                                                    validation_split = .2, callbacks=[reduce_lr])
             print(self.history[model_name].history["val_loss"][-1], end="\t")
             print("(", self.test(model_name), ")")
+            
+            if self.history[model_name].history["val_loss"][-1] < self._best_model_err:
+                self._best_model_err = self.history[model_name].history["val_loss"][-1]
+                self._best_model = model_name
     
     
     def test(self, model_name):
@@ -107,13 +129,76 @@ class Beholder:
         return np.mean(boot_loss_vec)
     
     
-    def save(self, filepath):
+    def plot_loss(self, starting_from=50, smooth_window=3, smooth_step=1):
+        def smooth(vec):
+            res = []
+            window = smooth_window
+            step = smooth_step
+            for i in range(window, len(vec)-window, step):
+                res.append(np.mean(vec[i-window:i+window+1]))
+            return res
+        
+        fig = plt.figure()
+        fig.set_figwidth(18)
+        fig.set_figheight(10)
+
+        gs = plt.GridSpec(2,4) # 2 rows, 3 columns
+        ax1 = fig.add_subplot(gs[0,:2]) # First row, first column
+        ax2 = fig.add_subplot(gs[0,2:4]) # First row, second column
+        ax3 = fig.add_subplot(gs[1,2:4]) # First row, third column
+
+        plt.gcf().subplots_adjust(bottom=0.4)
+
+        cmap = plt.get_cmap('rainbow')
+        colors = [cmap(i) for i in np.linspace(0, 1, len(self.models))]
+
+        for i, key in enumerate(sorted(self.models.keys(), key=lambda x:x[0])):
+            ax1.plot(np.log2(smooth(self.history[key].history["loss"][starting_from:])), label=key, c=colors[i])
+            ax2.plot(np.log2(smooth(self.history[key].history["val_loss"][starting_from:])), label=key, c=colors[i])
+
+        best_models_loss = self.test_df.sort_values("model")
+        ax3 = sns.boxplot(x = "val_loss", y = "model", data = best_models_loss, palette="rainbow")
+
+        ax1.set_title("loss")
+        ax2.set_title("val")
+        ax3.set_title("boostrapped loss")
+        ax1.legend(prop={'size':4})
+        ax1.legend(bbox_to_anchor=(.9, -1.1), loc='lower right', ncol = 1)
+
+        fig.tight_layout()
+
+        plt.savefig(self._folderpath + "/loss.png")
+        
+        
+    def plot_pred(self, model_name):
+        def plot(y, pred, ax, title, colors=["black", "red"]):
+            y_true = y.reshape((-1, self._seq_len))
+            y_pred = pred.reshape(y_true.shape)
+            for i in range(len(y_true)):
+                ax.plot(range(self._seq_len), y_true[i,:], c=colors[0], alpha=.5, label="real")
+                ax.plot(range(self._seq_len), y_pred[i,:], c=colors[1], linestyle="dotted", alpha=.8, label="pred")
+            ax.set_title(title)
+
+        fig, ax = plt.subplots(nrows=1, ncols=2)
+        fig.set_figwidth(16)
+
+        plot(self._y_test, self.models[model_name].predict(self._X_test), ax[0], "Test data")
+
+        plot(self._y_train, self.models[model_name].predict(self._X_train), ax[1], "Train data")
+
+        plt.savefig(self._folderpath + "/pred.png")
+        
+        
+    def save(self, starting_from=50, smooth_window=3, smooth_step=1):
         for name in self.models:
             self.save_model(name)
+        self.plot_loss(starting_from, smooth_window, smooth_step)
+        self.plot_pred(self._best_model)
         
     
     def save_model(self, name):
-        pass
+        self.models[name].save(self._folderpath + "/" + name + ".h5")
+        self.models[name].save_weights(self._folderpath + "/" + name + ".h5")
         
     
     def load(self, filepaths):
