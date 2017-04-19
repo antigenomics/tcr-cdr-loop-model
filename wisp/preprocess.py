@@ -6,6 +6,9 @@ import numpy as np
 from sklearn.preprocessing import MinMaxScaler, MaxAbsScaler, minmax_scale, maxabs_scale
 from sklearn.cluster import MiniBatchKMeans
 
+import gensim
+from gensim.models import Word2Vec
+
 
 #
 # One-hot
@@ -26,14 +29,14 @@ def window_to_seq(X):
 def onehot(df, left_window, right_window, max_pos, for_rnn = False):
     X = np.zeros((len(df)*max_pos, (left_window+right_window+1) * len(CHARS)), dtype=bool)
     y = np.zeros((len(df)*max_pos, 1), dtype=np.float32)
-    for seq_i, seq in enumerate(df["sequence"]):
+    for seq_i, seq in enumerate(df["seq"]):
         seq = "X"*left_window + seq + "X"*right_window
         for index, target_pos in enumerate(range(left_window + 1, len(seq) - right_window)):
             target_aa = seq[target_pos]
             for amb_pos, amb_aa in enumerate(seq[target_pos-left_window : target_pos+right_window+1]):
                 if amb_aa != "X":
                     X[seq_i*max_pos + index, amb_pos*len(CHARS):(amb_pos+1)*len(CHARS)] = CHAR_ONE_HOT[amb_aa]
-            y[seq_i*max_pos + index] = df[[4 + index]].iloc[seq_i]
+            y[seq_i*max_pos + index] = df[[1 + index]].iloc[seq_i]
             
     if for_rnn:
         X = window_to_seq(X)
@@ -41,21 +44,17 @@ def onehot(df, left_window, right_window, max_pos, for_rnn = False):
     return X, y
 
 
-def onehot_omega(df, left_window, right_window, max_pos, for_rnn = False, add_pos = False, add_len = False):
-    X = np.zeros((len(df)*max_pos, (left_window+right_window+1+add_pos+add_len) * len(CHARS)), dtype=bool)
+def onehot_omega(df, left_window, right_window, max_pos, for_rnn = False):
+    X = np.zeros((len(df)*max_pos, (left_window+right_window+1) * len(CHARS)), dtype=bool)
     y = np.zeros((len(df)*max_pos, 1), dtype=np.float32)
-    for seq_i, seq in enumerate(df["sequence"]):
+    for seq_i, seq in enumerate(df["seq"]):
         seq = seq[len(seq) - left_window : len(seq)] + seq + seq[:right_window]
         for index, target_pos in enumerate(range(left_window + 1, len(seq) - right_window)):
             target_aa = seq[target_pos]
             for amb_pos, amb_aa in enumerate(seq[target_pos-left_window : target_pos+right_window+1]):
                 if amb_aa != "X":
                     X[seq_i*max_pos + index, amb_pos*len(CHARS):(amb_pos+1)*len(CHARS)] = CHAR_ONE_HOT[amb_aa]
-                    if add_pos:
-                        X[seq_i*max_pos + index, -1] = float(amb_pos) / max_pos
-                    # if add_len:
-                    #     X[seq_i*max_pos + index, -1] = max_pos # categotical
-            y[seq_i*max_pos + index] = df[[4 + index]].iloc[seq_i]
+            y[seq_i*max_pos + index] = df[[1 + index]].iloc[seq_i]
     
     if for_rnn:
         X = window_to_seq(X)
@@ -66,7 +65,7 @@ def onehot_omega(df, left_window, right_window, max_pos, for_rnn = False, add_po
 def twohot_omega(df, left_window, right_window, max_pos, for_rnn = True):
     X = np.zeros((len(df)*max_pos, left_window+right_window, len(CHARS)*2), dtype=bool)
     y = np.zeros((len(df)*max_pos, 1), dtype=np.float32)
-    for seq_i, seq in enumerate(df["sequence"]):
+    for seq_i, seq in enumerate(df["seq"]):
         seq = seq[len(seq) - left_window : len(seq)] + seq + seq[:right_window]
         for index, target_pos in enumerate(range(left_window + 1, len(seq) - right_window)):
             target_aa = seq[target_pos]
@@ -77,26 +76,25 @@ def twohot_omega(df, left_window, right_window, max_pos, for_rnn = True):
                     X[seq_i*max_pos + index, amb_pos - k, :] = np.vstack([CHAR_ONE_HOT[amb_aa].reshape(20,1), CHAR_ONE_HOT[target_aa].reshape(20,1)]).reshape((40,))
                 else:
                     k += 1
-            
-            y[seq_i*max_pos + index] = df[[4 + index]].iloc[seq_i]
+            y[seq_i*max_pos + index] = df[[1 + index]].iloc[seq_i]
+    
+    if for_rnn:
+        X = window_to_seq(X)
+    
     return X, y
 
 
-def onehot_omega_delta(df, left_window, right_window, max_pos, for_rnn = False, add_pos = False, add_len = False):
-    X = np.zeros((len(df)*max_pos, (left_window+right_window+1+add_pos+add_len) * len(CHARS)), dtype=bool)
+def onehot_omega_delta(df, left_window, right_window, max_pos, for_rnn = False,):
+    X = np.zeros((len(df)*max_pos, (left_window+right_window+1) * len(CHARS)), dtype=bool)
     y = np.zeros((len(df)*max_pos, 1), dtype=np.float32)
-    for seq_i, seq in enumerate(df["sequence"]):
+    for seq_i, seq in enumerate(df["seq"]):
         seq = seq[len(seq) - left_window : len(seq)] + seq + seq[:right_window]
         for index, target_pos in enumerate(range(left_window, len(seq) - right_window)):
             target_aa = seq[target_pos]
             for amb_pos, amb_aa in enumerate(seq[target_pos-left_window : target_pos+right_window+1]):
                 if amb_aa != "X":
                     X[seq_i*max_pos + index, amb_pos*len(CHARS):(amb_pos+1)*len(CHARS)] = CHAR_ONE_HOT[amb_aa]
-                    if add_pos:
-                        X[seq_i*max_pos + index, -1] = float(amb_pos) / max_pos
-                    # if add_len:
-                    #     X[seq_i*max_pos + index, -1] = max_pos # categotical
-            y[seq_i*max_pos + index] = df[[3 + index]].iloc[seq_i]
+            y[seq_i*max_pos + index] = df[[1 + index]].iloc[seq_i]
     
     if for_rnn:
         X = window_to_seq(X)
@@ -161,3 +159,7 @@ def cluster(X, n_clust):
     min_cluster, min_cluster_size = min(labels_cnt.items(), key = lambda x: x[1])
     
     return labels, labels_cnt, min_cluster, min_cluster_size
+
+
+def embeddings(seq, ndim, window):
+    pass

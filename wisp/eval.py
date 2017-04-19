@@ -92,5 +92,6 @@ def bootstrap_cdr(model, X, y, max_pos, n = 100, proc_y = lambda x: x):
             Xnew = [x[to_take] for x in X]
         else:
             Xnew = X[to_take]
-        res.append(mean_sample_error(model.predict(Xnew), ynew, max_pos))
+        # res.append(mean_sample_error(model.predict(Xnew), ynew, max_pos))
+        res.append(mean_squared_error(model.predict(Xnew), ynew))
     return res

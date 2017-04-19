@@ -1,224 +1,148 @@
+from __future__ import print_function
+
+import os
+import sys
+os.environ["THEANO_FLAGS"] = "lib.cnmem=0.4"
+import theano
+
 import pandas as pd
 import numpy as np
-import keras
-from keras.models import Sequential
-from keras.layers import Dense, Dropout, BatchNormalization
-from keras.layers.advanced_activations import PReLU
+from sklearn.preprocessing import MinMaxScaler, MaxAbsScaler, minmax_scale, maxabs_scale
+from sklearn.metrics import mean_squared_error
+from sklearn.cluster import MiniBatchKMeans
 import matplotlib
 matplotlib.use('Agg')
 import matplotlib.pyplot as plt
-import joblib
-from keras import optimizers
-from keras.callbacks import ReduceLROnPlateau
+from keras.models import Sequential
+from keras.layers import Dense, Dropout, BatchNormalization
+from keras.layers.advanced_activations import PReLU
+from keras.optimizers import Nadam
+
+import seaborn as sns
+sns.set_style("whitegrid") 
+
+import wisp
+from wisp import model as wmodel
+from wisp import eval as weval
+from wisp import train as wtrain
 
 
+##########################
+##########################
 
-################################
-################################
+SEQ_LEN       = int(sys.argv[1])
+N_EPOCHS      = 500
+STARTING_FROM = 1
+SMOOTH_WIND   = 1
+SMOOTH_STEP   = 1
+BATCH_SIZE    = 16
+VERBOSE       = 0
 
-coord = "x"
-df_cdr = pd.read_csv("data/cdr_coord_" + coord + ".csv.gz")
-df_put = pd.read_csv("data/put_coord_" + coord + ".csv.gz")
-df_can = pd.read_csv("data/can_coord_" + coord + ".csv.gz")
+##########################
+##########################
 
-print(df_cdr.shape)
-print(df_put.shape)
-print(df_can.shape)
+(X_train, y_train), in_shape, data_name = wtrain.load_data("data/can." + str(SEQ_LEN) + ".csv.gz", "x", 4, 4, add_pos=True, for_rnn=True)
+(X_test, y_test), _, _ = wtrain.load_data("data/cdr." + str(SEQ_LEN) + ".csv.gz", "x", 4, 4, add_pos=True, for_rnn=True)
 
+beholder = wtrain.Beholder(SEQ_LEN, (X_train, y_train), (X_test, y_test), in_shape, data_name)
+beholder.add_model("cnn_pos", [2,64])
+beholder.add_model("cnn_pos", [3,64])
+beholder.add_model("cnn_pos", [4,64])
+beholder.add_model("cnn_pos", [2,128])
+beholder.add_model("cnn_pos", [3,128])
+beholder.add_model("cnn_pos", [4,128])
+beholder.train(n_epochs=N_EPOCHS, batch_size=BATCH_SIZE, verbose=VERBOSE)
 
-################################
-################################
+# best_models = [(4,4), (6,6)]
+# best_layers = [[128, 64]]
 
-MAX_POS=12
+# best_hist = {}
+# best_models_list = {}
+# best_models_loss = pd.DataFrame()
 
-chars = ["A", "L", "R", 'K', 'N', 'M', 'D', 'F', 'C', 'P', 'Q', 'S', 'E', 'T', 'G', 'W', 'H', 'Y', 'I', 'V']
-char_indices = dict((c, i) for i, c in enumerate(chars))
-indices_char = dict((i, c) for i, c in enumerate(chars))
-
-one_hot = dict((c, np.zeros((len(chars),), dtype=bool)) for c in chars)
-for c in one_hot:
-    one_hot[c][char_indices[c]] = 1
+# best_models = [(6,6)]
+# for l,r in best_models:
+#     _, best_models_loss = wtrain.train_model(MAX_POS, 0, "x", [2, 64], l, r, N_EPOCHS, 
+#                                            best_hist, best_models_list, best_models_loss, 
+#                                            features = "omega", model_type="cnn_pos", 
+#                                              batch_size=BATCH_SIZE, verbose=VERBOSE)
+#     _, best_models_loss = wtrain.train_model(MAX_POS, 0, "x", [3, 64], l, r, N_EPOCHS, 
+#                                            best_hist, best_models_list, best_models_loss, 
+#                                            features = "omega", model_type="cnn_pos", 
+#                                              batch_size=BATCH_SIZE, verbose=VERBOSE)
+#     _, best_models_loss = wtrain.train_model(MAX_POS, 0, "x", [4, 64], l, r, N_EPOCHS, 
+#                                              best_hist, best_models_list, best_models_loss, 
+#                                              features = "omega", model_type="cnn_pos", 
+#                                              batch_size=BATCH_SIZE, verbose=VERBOSE)
     
+#     _, best_models_loss = wtrain.train_model(MAX_POS, 0, "x", [2, 128], l, r, N_EPOCHS, 
+#                                            best_hist, best_models_list, best_models_loss, 
+#                                            features = "omega", model_type="cnn_pos", 
+#                                              batch_size=BATCH_SIZE, verbose=VERBOSE)
+#     _, best_models_loss = wtrain.train_model(MAX_POS, 0, "x", [3, 128], l, r, N_EPOCHS, 
+#                                            best_hist, best_models_list, best_models_loss, 
+#                                            features = "omega", model_type="cnn_pos", 
+#                                              batch_size=BATCH_SIZE, verbose=VERBOSE)
+#     _, best_models_loss = wtrain.train_model(MAX_POS, 0, "x", [4, 128], l, r, N_EPOCHS, 
+#                                            best_hist, best_models_list, best_models_loss, 
+#                                            features = "omega", model_type="cnn_pos", 
+#                                              batch_size=BATCH_SIZE, verbose=VERBOSE)
     
-################################
-################################
+#     _, best_models_loss = wtrain.train_model(MAX_POS, 0, "x", [2, 192], l, r, N_EPOCHS, 
+#                                            best_hist, best_models_list, best_models_loss, 
+#                                            features = "omega", model_type="cnn_pos", 
+#                                              batch_size=BATCH_SIZE, verbose=VERBOSE)
+#     _, best_models_loss = wtrain.train_model(MAX_POS, 0, "x", [3, 192], l, r, N_EPOCHS, 
+#                                            best_hist, best_models_list, best_models_loss, 
+#                                            features = "omega", model_type="cnn_pos", 
+#                                              batch_size=BATCH_SIZE, verbose=VERBOSE)
+#     _, best_models_loss = wtrain.train_model(MAX_POS, 0, "x", [4, 192], l, r, N_EPOCHS, 
+#                                            best_hist, best_models_list, best_models_loss, 
+#                                            features = "omega", model_type="cnn_pos", 
+#                                              batch_size=BATCH_SIZE, verbose=VERBOSE)
 
-def to_vec_onehot(df, left_window, right_window):   
-    X = np.zeros((len(df)*MAX_POS, (left_window+right_window+1) * len(chars)+1), dtype=bool)
-    y = np.zeros((len(df)*MAX_POS, 1), dtype=np.float32)
-    for seq_i, seq in enumerate(df["sequence"]):
-        seq = "X"*left_window + seq + "X"*right_window
-        for index, target_pos in enumerate(range(left_window + 1, len(seq) - right_window)):
-            target_aa = seq[target_pos]
-            for amb_pos, amb_aa in enumerate(seq[target_pos-left_window : target_pos+right_window+1]):
-                if amb_aa != "X":
-                    X[seq_i*MAX_POS + index, amb_pos*len(chars):(amb_pos+1)*len(chars)] = one_hot[amb_aa]
-            X[seq_i*MAX_POS + index, -1] = target_pos / len(seq)
-            y[seq_i*MAX_POS + index] = df[[4 + index]].iloc[seq_i]
-    return X, y
+##########################
+##########################
 
-
-def to_vec_kidera(df, left_window, right_window):
-    X = np.zeros((len(df)*MAX_POS, (left_window+right_window+1) * 10), dtype=bool)
-    y = np.zeros((len(df)*MAX_POS, 1), dtype=np.float32)
-    for seq_i, seq in enumerate(df["sequence"]):
-        seq = "X"*left_window + seq + "X"*right_window
-        for index, target_pos in enumerate(range(left_window + 1, len(seq) - right_window)):
-            target_aa = seq[target_pos]
-            for amb_pos, amb_aa in enumerate(seq[target_pos-left_window : target_pos+right_window+1]):
-                if amb_aa != "X":
-                    X[seq_i*MAX_POS + index, amb_pos*10:(amb_pos+1)*10] = kidera[amb_aa]
-            y[seq_i*MAX_POS + index] = df[[4 + index]].iloc[seq_i]
-    return X, y
-
-
-################################
-################################
-
-X_can, y_can = to_vec_onehot(df_can, 3, 3)
-print(X_can.shape)
-# X_put, y_put = to_vec_onehot(df_put, 3, 3)
-X_put = np.load("X_put.npy")
-y_put = np.load("y_put.npy")
-print(X_put.shape)
-X_cdr, y_cdr = to_vec_onehot(df_cdr, 3, 3)
-print(X_cdr.shape)
-
-
-################################
-################################
-
-def add_dense(model, h_units):
-    model.add(Dense(h_units))
-    model.add(BatchNormalization())
-    model.add(PReLU())
-    model.add(Dropout(.3))
-
-              
-def dense_model(shape, output, h_units = [256, 128, 64]):
-    model = Sequential()
-    
-    model.add(Dense(h_units[0], input_shape=shape))
-    model.add(BatchNormalization())
-    model.add(PReLU())
-    model.add(Dropout(.3))
-    
-    for num in h_units[1:]: add_dense(model, num)
-        
-    model.add(Dense(output))
-    model.add(PReLU())
-    
-    model.compile(optimizer="nadam", loss="mse")
-    
-    return model
-
-
-from collections import Counter
-
-
-def to_vec_onehot(df, left_window, right_window):
-    X = np.zeros((len(df)*MAX_POS, (left_window+right_window+1) * len(chars)), dtype=bool)
-    y = np.zeros((len(df)*MAX_POS, 1), dtype=np.float32)
-    for seq_i, seq in enumerate(df["sequence"]):
-        seq = "X"*left_window + seq + "X"*right_window
-        for index, target_pos in enumerate(range(left_window + 1, len(seq) - right_window)):
-            target_aa = seq[target_pos]
-            for amb_pos, amb_aa in enumerate(seq[target_pos-left_window : target_pos+right_window+1]):
-                if amb_aa != "X":
-                    X[seq_i*MAX_POS + index, amb_pos*len(chars):(amb_pos+1)*len(chars)] = one_hot[amb_aa]
-            y[seq_i*MAX_POS + index] = df[[4 + index]].iloc[seq_i]
-    return X, y
-
-
-def preprocess(df, how, scale):
-    if how == "col":
-        for i in range(4, 16):
-            if scale == "mm":
-                df.iloc[:,i] = minmax_scale(df.iloc[:,i])
-            elif scale == "abs":
-                df.iloc[:,i] = maxabs_scale(df.iloc[:,i])
-            else:
-                print("Unknown parameter", scale)
-    elif how == "all":
-        if scale == "mm":
-            df.iloc[:,range(4, 16)] = minmax_scale(df.iloc[:,range(4, 16)])
-        elif scale == "abs":
-            df.iloc[:,range(4, 16)] = maxabs_scale(df.iloc[:,range(4, 16)])
-        else:
-            print("Unknown parameter", scale)
-    else:
-        print("Unknown parameter", how)
-
-
-def train_models(n_clust, coord, layers, left_window, right_window, n_epochs, hist, model_list, how = "no", scale = "no"):
-    model_name = "left" + str(left_window) + "_right" + str(right_window) + "." + "-".join(map(str, layers)) + "." + how + "_" + scale
-
-    if n_clust > 0:
-        model_name += ".clust_" + str(n_clust)
-    
-    if model_name not in hist:
-        print(model_name)
-        df_cdr = pd.read_csv("data/cdr_coord_" + coord + ".csv.gz")
-        df_can = pd.read_csv("data/can_coord_" + coord + ".csv.gz")
-        
-        if how in ["col", "abs"]:
-            preprocess(df_cdr, how, scale)
-            preprocess(df_can, how, scale)
-
-        X_can, y_can = to_vec_onehot(df_can, left_window, right_window)
-        X_cdr, y_cdr = to_vec_onehot(df_cdr, left_window, right_window)        
-
-        model = dense_model((20*(right_window+left_window+1),), 1, layers)
-
-        if n_clust == 0:
-            hist_obj = model.fit(X_can, y_can, batch_size=64, epochs=n_epochs, verbose=0, validation_data=(X_cdr, y_cdr))
-        else:
-            kmeans = MiniBatchKMeans(n_clust)
-            kmeans.fit(X_can)
-            
-            labels = kmeans.predict(X_can)
-            labels_cnt = Counter(labels)
-            min_cluster, min_cluster_size = min(labels_cnt.items(), key = lambda x: x[1])
-            
-            weight_vec = np.array([np.log(min_cluster_size) / np.log(labels_cnt[x]) for x in labels])
-            
-            hist_obj = model.fit(X_can, y_can, sample_weight=weight_vec, batch_size=64, epochs=n_epochs, verbose=0, validation_data=(X_cdr, y_cdr))
-        
-        hist[model_name] = hist_obj
-        model_list[model_name] = model
-        
-        return model
-    else:
-        print(model_name, "- return the old model")
-        return model_list[model_name]
-
-
-################################
-################################
-
-hist = {}
-for left_window in range(8):
-    for right_window in range(8):
-        train_models("y", left_window, right_window, 2000, hist)
-
-
-################################
-################################
-
-fig, ax = plt.subplots(nrows=1, sharex=True, ncols=2)
-fig.set_figwidth(16)
+fig = plt.figure()
+fig.set_figwidth(18)
 fig.set_figheight(10)
 
-best_models = sorted([(h, np.mean(hist[h].history["val_loss"][-5:])) for h in hist], key=lambda x: x[1])[:8]
+gs = plt.GridSpec(2,4) # 2 rows, 3 columns
+ax1 = fig.add_subplot(gs[0,:2]) # First row, first column
+ax2 = fig.add_subplot(gs[0,2:4]) # First row, second column
+ax3 = fig.add_subplot(gs[1,2:4]) # First row, third column
 
-for i, (h, _) in enumerate(sorted(best_models)):
-    ax[0].plot(np.log2(hist[h].history["loss"][100:]), label=h)
-    ax[1].plot(np.log2(hist[h].history["val_loss"][100:]), label=h)
+plt.gcf().subplots_adjust(bottom=0.4)
 
+def smooth(vec):
+    res = []
+    window = SMOOTH_WIND
+    step = SMOOTH_STEP
+    for i in range(window, len(vec)-window, step):
+        res.append(np.mean(vec[i-window:i+window+1]))
+    return res
 
-ax[0].set_title("loss")
-ax[1].set_title("val")
-ax[0].legend()
-ax[1].legend()
+# cur_hist = best_hist
+# best_models = sorted([(h, np.mean(cur_hist[h].history["val_loss"][-5:])) for h in cur_hist], key=lambda x: x[1])[:10]
 
-plt.savefig("loss_y_dense_onehot_8best_2000it.png")
+cmap = plt.get_cmap('rainbow')
+colors = [cmap(i) for i in np.linspace(0, 1, len(beholder.models))]
+
+for i, key in enumerate(sorted(beholder.models.keys(), key=lambda x:x[0])):
+    ax1.plot(np.log2(smooth(beholder.history[key].history["loss"][STARTING_FROM:])), label=key, c=colors[i])
+    ax2.plot(np.log2(smooth(beholder.history[key].history["val_loss"][STARTING_FROM:])), label=key, c=colors[i])
+    
+best_models_loss = beholder.test_df.sort_values("model")
+ax3 = sns.boxplot(x = "val_loss", y = "model", data = best_models_loss, palette="rainbow")
+# ax3.set_xticklabels(ax3.get_xticklabels(), rotation=90)
+    
+ax1.set_title("loss")
+ax2.set_title("val")
+ax3.set_title("boostrapped loss")
+ax1.legend(prop={'size':4})
+ax1.legend(bbox_to_anchor=(.9, -1.1), loc='lower right', ncol = 1)
+
+fig.tight_layout()
+
+plt.savefig("loss/last.png")

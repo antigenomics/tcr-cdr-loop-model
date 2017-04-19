@@ -103,10 +103,10 @@ def rnn_model(shape, output, h_units, rnn_type):
         rnn_layer =  GRU(h_units[0], kernel_initializer="he_normal", recurrent_initializer="he_normal", 
                        implementation=2, bias_initializer="he_normal", dropout=.2, recurrent_dropout=.2,
                        unroll=True, input_shape=shape)
-    elif rnn_type.find("lstm") != -1:
-        rnn_layer = LSTM(h_units[0], kernel_initializer="he_normal", recurrent_initializer="he_normal", 
-                       implementation=2, bias_initializer="he_normal", dropout=.2, recurrent_dropout=.2,
-                       unroll=True, input_shape=shape)
+    # elif rnn_type.find("lstm") != -1:
+    #     rnn_layer = LSTM(h_units[0], kernel_initializer="he_normal", recurrent_initializer="he_normal", 
+    #                    implementation=2, bias_initializer="he_normal", dropout=.2, recurrent_dropout=.2,
+    #                    unroll=True, input_shape=shape)
     else:
         print("Can't find neither GRU not LSTM")
         return 0
@@ -128,6 +128,9 @@ def rnn_model(shape, output, h_units, rnn_type):
     model.compile(optimizer="nadam", loss="mse")
     
     return model
+
+def gru_model(shape, output, h_units):
+    return rnn_model(shape, output, h_units, "gru")
 
 
 def cnn_pos_model(shape, output, h_units):
