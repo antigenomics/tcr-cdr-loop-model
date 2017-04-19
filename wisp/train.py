@@ -198,7 +198,7 @@ class Beholder:
     
     def save_model(self, name):
         self.models[name].save(self._folderpath + "/" + name + ".h5")
-        self.models[name].save_weights(self._folderpath + "/" + name + ".h5")
+        self.models[name].save_weights(self._folderpath + "/" + name + ".weights.h5")
         
     
     def load(self, filepaths):
