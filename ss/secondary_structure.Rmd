@@ -1,0 +1,71 @@
+---
+title: "Secondary structure of TCR CDR regions"
+output:
+  pdf_document: default
+  html_document: default
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+```{r}
+library(dplyr)
+library(ggplot2)
+```
+
+Load TCR V-D-J mapping for our PDBs
+
+```{r}
+df.meta = read.table("tcr.annotations.txt", header = T, sep = "\t") %>%
+  filter(region %in% c("CDR1", "CDR2", "CDR3"))
+```
+
+Load data processed with STRIDE software, see https://en.wikipedia.org/wiki/STRIDE and https://en.wikipedia.org/wiki/DSSP_(hydrogen_bond_estimation_algorithm). See DSSP classification section in https://en.wikipedia.org/wiki/Protein_secondary_structure for glossary
+
+```{r}
+df.ss = data.frame()
+
+for (f in list.files('data/')) {
+  .cmd = paste0('zcat data/',  f, ' | grep "^ASG"')
+  
+  .df.ss.tmp = read.table(pipe(.cmd), header = F) %>%
+               select(V2, V3, V5, V7, V11)
+
+  colnames(.df.ss.tmp) = c("res", "pdb_chain_id", "pos", "ss", "pdb_id")
+  
+  .df.ss.tmp$pdb_id = tolower(.df.ss.tmp$pdb_id)
+  df.ss = rbind(df.ss, .df.ss.tmp)
+}
+
+df.ss$pos = as.integer(df.ss$pos)
+```
+
+Merge with CDR1-3 mapping
+
+```{r}
+df.ss.1 = merge(df.meta, df.ss, by = c("pdb_id", "pdb_chain_id"), all.y = T) %>%
+ filter(pos >= start+1 & pos <= end)
+
+df.ss.1$len_tcr = with(df.ss.1, end - start)
+```
+
+Distribution of various secondary structure classifications for CDR3
+
+```{r}
+ggplot(df.ss.1 %>% filter(region=="CDR3"), aes(x=pos - start - 1, fill = ss)) +
+  geom_histogram(binwidth = 1, color = "black", size = 0.1) +
+  facet_wrap(~len_tcr, scales = "free") +
+  scale_fill_brewer(palette = "Set3") +
+  theme_bw()
+```
+
+All regions
+
+```{r}
+ggplot(df.ss.1, aes(x=pos - start - 1, fill = ss)) +
+  geom_histogram(binwidth = 1, color = "black", size = 0.1) +
+  facet_wrap(~len_tcr, scales = "free") +
+  scale_fill_brewer(palette = "Set3") +
+  theme_bw()
+```
