@@ -186,8 +186,12 @@ def cnn_pos_model(shape, output, h_units):
     return model
 
 
-def delta_model(shape, output, h_units):
+def _delta_model(shape, output, h_units):
     def _block(prev_layer, shape):
+        branch = BatchNormalization()(prev_layer)
+        branch = PReLU()(branch)
+        branch = Conv1D(128, 1, kernel_initializer="he_normal")(branch)
+        
         branch = BatchNormalization()(prev_layer)
         branch = PReLU()(branch)
         branch = Conv1D(192, 1, kernel_initializer="he_normal")(branch)
@@ -239,3 +243,20 @@ def delta_model(shape, output, h_units):
     model.compile(optimizer="nadam", loss="mse")
     
     return model
+
+
+class DeltaModel:
+    
+    def __init__(self, shape, output, h_units):
+        self.model = _delta_model(shape, output, h_units)
+        self.optimizer = self.model.optimizer
+    
+    def fit(self, **kwargs):
+        return self.model.fit(**kwargs)
+    
+    def predict(self, X):
+        return self.model.predict(X)
+    
+    
+def delta_model(shape, output, h_units):
+    return DeltaModel(shape, output, h_units)
