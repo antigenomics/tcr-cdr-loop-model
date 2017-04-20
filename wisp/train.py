@@ -66,6 +66,7 @@ class Beholder:
         self._folderpath = "models/" + folderpath
         if not os.path.exists(self._folderpath):
             os.makedirs(self._folderpath)
+        print("[Beholder] Working folder:", self._folderpath)
         
         self.models = {}
         self.history = {}
@@ -107,8 +108,8 @@ class Beholder:
     
     
     def train(self, n_epochs, batch_size=16, verbose=0, lr=0):
-        reduce_lr = ReduceLROnPlateau(monitor='val_loss', factor=0.2, patience=3, cooldown=1, min_lr=0.0005)
-        early_stop = EarlyStopping(patience=3)
+        reduce_lr = ReduceLROnPlateau(monitor='val_loss', factor=0.2, patience=3, cooldown=1, min_lr=0.00002)
+        # early_stop = EarlyStopping(patience=5)
         print("[Beholder] Training...")
         for model_name in self.models:
             print(" --", model_name, end="\t")
@@ -118,13 +119,15 @@ class Beholder:
             
             self.history[model_name] = self.models[model_name].fit(self._X_train, self._y_train, 
                                                                    batch_size=batch_size, verbose=verbose, epochs=n_epochs, 
-                                                                   validation_split = .2, callbacks=[reduce_lr, early_stop, CSVLogger(self._folderpath + "/" + model_name + ".log")])
+                                                                   validation_data=(self._X_test, self._y_test), callbacks=[reduce_lr, CSVLogger(self._folderpath + "/" + model_name + ".log")])
             print(self.history[model_name].history["val_loss"][-1], end="\t")
             print("(", self.test(model_name), ")")
             
             if self.history[model_name].history["val_loss"][-1] < self._best_model_err:
                 self._best_model_err = self.history[model_name].history["val_loss"][-1]
                 self._best_model = model_name
+            
+            self.save_model(model_name)
     
     
     def test(self, model_name):
@@ -197,8 +200,8 @@ class Beholder:
         
         
     def save(self, starting_from=50, smooth_window=3, smooth_step=1):
-        for name in self.models:
-            self.save_model(name)
+        # for name in self.models:
+        #     self.save_model(name)
         self.plot_loss(starting_from, smooth_window, smooth_step)
         self.plot_pred(self._best_model)
         
@@ -206,6 +209,8 @@ class Beholder:
     def save_model(self, name):
         self.models[name].save(self._folderpath + "/" + name + ".h5")
         self.models[name].save_weights(self._folderpath + "/" + name + ".weights.h5")
+        np.savetxt(self._folderpath + "/" + name + ".train.pred.txt", self.models[name].predict(self._X_train)) 
+        np.savetxt(self._folderpath + "/" + name + ".test.pred.txt", self.models[name].predict(self._X_test)) 
         
     
     def load(self, folder):

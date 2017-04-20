@@ -7,6 +7,8 @@ from keras.layers.advanced_activations import PReLU
 from keras.optimizers import Nadam
 from keras.callbacks import ReduceLROnPlateau
 
+from sklearn.linear_model import BayesianRidge
+
 from .preprocess import *
 from .eval import *
 
@@ -252,10 +254,15 @@ class DeltaModel:
         self.optimizer = self.model.optimizer
     
     def fit(self, **kwargs):
-        return self.model.fit(**kwargs)
+        res = self.model.fit(**kwargs)
+        
+        return res
     
     def predict(self, X):
         return self.model.predict(X)
+    
+    def predict_stageI(self, X):
+        pass
     
     
 def delta_model(shape, output, h_units):
