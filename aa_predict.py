@@ -43,10 +43,10 @@ RIGHT_WIND    = 6
 ##########################
 ##########################
 
-(X_train, y_train), in_shape, data_name = wtrain.load_data("data/put." + str(SEQ_LEN) + ".csv.gz", "x", LEFT_WIND, RIGHT_WIND, add_pos=True, for_rnn=True)
-(X_test, y_test), _, _ = wtrain.load_data("data/can." + str(SEQ_LEN) + ".csv.gz", "x", LEFT_WIND, RIGHT_WIND, add_pos=True, for_rnn=True)
+(X_train, y_train), in_shape, data_name = wtrain.load_data("data/can." + str(SEQ_LEN) + ".csv.gz", "x", LEFT_WIND, RIGHT_WIND, add_pos=True, for_rnn=True)
+(X_test, y_test), _, _ = wtrain.load_data("data/cdr." + str(SEQ_LEN) + ".csv.gz", "x", LEFT_WIND, RIGHT_WIND, add_pos=True, for_rnn=True)
 
-beholder = wtrain.Beholder(folderpath="put_can", seq_len=SEQ_LEN, 
+beholder = wtrain.Beholder(folderpath="can_cdr", seq_len=SEQ_LEN, 
                            train_data=(X_train, y_train), test_data=(X_test, y_test), 
                            input_shape=in_shape, data_name=data_name)
 # beholder.load("models/put_can")
