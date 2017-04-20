@@ -2,7 +2,7 @@ from __future__ import print_function
 
 import os
 import sys
-os.environ["THEANO_FLAGS"] = "lib.cnmem=0.4"
+os.environ["THEANO_FLAGS"] = "lib.cnmem=0.3"
 import theano
 
 import pandas as pd
@@ -31,20 +31,20 @@ from wisp import train as wtrain
 ##########################
 
 SEQ_LEN       = int(sys.argv[1])
-N_EPOCHS      = 100
-STARTING_FROM = 10
+N_EPOCHS      = 700
+STARTING_FROM = 30
 SMOOTH_WIND   = 3
 SMOOTH_STEP   = 1
-BATCH_SIZE    = 64
+BATCH_SIZE    = 16
 VERBOSE       = 0
 
 ##########################
 ##########################
 
-(X_train, y_train), in_shape, data_name = wtrain.load_data("data/put." + str(SEQ_LEN) + ".csv.gz", "x", 4, 4, add_pos=True, for_rnn=True)
-(X_test, y_test), _, _ = wtrain.load_data("data/can." + str(SEQ_LEN) + ".csv.gz", "x", 4, 4, add_pos=True, for_rnn=True)
+(X_train, y_train), in_shape, data_name = wtrain.load_data("data/can." + str(SEQ_LEN) + ".csv.gz", "x", 4, 4, add_pos=True, for_rnn=True)
+(X_test, y_test), _, _ = wtrain.load_data("data/cdr." + str(SEQ_LEN) + ".csv.gz", "x", 4, 4, add_pos=True, for_rnn=True)
 
-beholder = wtrain.Beholder(folderpath="put_can", seq_len=SEQ_LEN, 
+beholder = wtrain.Beholder(folderpath="can_cdr", seq_len=SEQ_LEN, 
                            train_data=(X_train, y_train), test_data=(X_test, y_test), 
                            input_shape=in_shape, data_name=data_name)
 beholder.add_model("cnn_pos", [2,64])

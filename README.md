@@ -27,7 +27,7 @@ Folders:
 - `plots` - various plots.
 
 
-## 0. Preprocessing
+## 1. Preprocessing
 
 Data is highly variable due to different structures and stochasticity in the optimization procedure (length - 11, X and Y coordinates, distribution of differences among the max and min values per position):
 
@@ -76,6 +76,43 @@ L all uniq
 ```
 
 
+## 2. Features
+
+
+### 1.1. Naive approach
+
+Surround sequences by null symbols.
+
+
+### 1.2. "Omega loops"
+
+First and last amino acids depends on each other other. It is better than the naive approach:
+<img src="loss/loss_x_dense_4_4_comparison_clust_and_onehot_1200it.png" width="80%">
+
+
+### 1.3. Positional / length-positional
+
+Add position or position/length for each amino acid to each dense layer. It helps:
+
+<img src="loss/comparison/loss_x_dense_comparison_1500it.png" width="80%">
+
+Interstinegly enough, if we train the model on CDRs and predict putative ones than the pos-len modification helps a lot:
+
+<img src="loss/loss_dense_changeCDRs_1500it.png" width="80%">
+
+
+### 3.4. Delta models - difference between neighbour coordinates
+
+
+## 3. Models
+
+### 3.1. Convolutional
+
+### 3.2. Recurrent
+
+### 3.3. Convolutional-recurrent
+
+--
 
 ## 1. Coordinates and models
 
@@ -142,6 +179,7 @@ array([-0.0673693 , -0.1109571 , -0.39486038, -0.09391625, -0.02850241,
 
 
 ## 2. Amino acid transformations
+
 **one-hot** - code each amino acid as a 20-dimensional vector with 1 at the index of the corresponding amino acid.
 
 **kidera** - worked worse than one-hot.
