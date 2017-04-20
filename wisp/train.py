@@ -9,11 +9,11 @@ import matplotlib.pyplot as plt
 import seaborn as sns
 sns.set_style("whitegrid") 
 
-from keras.models import Sequential, Model
+from keras.models import Sequential, Model, load_model
 from keras.layers import Dense, Dropout, BatchNormalization, concatenate, Input, LSTM, GRU, Conv1D, add, Flatten
 from keras.layers.advanced_activations import PReLU
 from keras.optimizers import Nadam
-from keras.callbacks import ReduceLROnPlateau
+from keras.callbacks import ReduceLROnPlateau, EarlyStopping, CSVLogger
 
 from .preprocess import *
 from .eval import *
@@ -106,14 +106,19 @@ class Beholder:
         print("Done.")
     
     
-    def train(self, n_epochs, batch_size=16, verbose=0):
+    def train(self, n_epochs, batch_size=16, verbose=0, lr=0):
         reduce_lr = ReduceLROnPlateau(monitor='val_loss', factor=0.2, patience=3, cooldown=1, min_lr=0.0005)
+        early_stop = EarlyStopping(patience=3)
         print("[Beholder] Training...")
         for model_name in self.models:
             print(" --", model_name, end="\t")
+            
+            if lr:
+                self.models[model_name].optimizer.lr.set_value(lr)
+            
             self.history[model_name] = self.models[model_name].fit(self._X_train, self._y_train, 
                                                                    batch_size=batch_size, verbose=verbose, epochs=n_epochs, 
-                                                                   validation_split = .2, callbacks=[reduce_lr])
+                                                                   validation_split = .2, callbacks=[reduce_lr, early_stop, CSVLogger(self._folderpath + "/" + model_name + ".log")])
             print(self.history[model_name].history["val_loss"][-1], end="\t")
             print("(", self.test(model_name), ")")
             
@@ -153,8 +158,10 @@ class Beholder:
         colors = [cmap(i) for i in np.linspace(0, 1, len(self.models))]
 
         for i, key in enumerate(sorted(self.models.keys(), key=lambda x:x[0])):
-            ax1.plot(np.log2(smooth(self.history[key].history["loss"][starting_from:])), label=key, c=colors[i])
-            ax2.plot(np.log2(smooth(self.history[key].history["val_loss"][starting_from:])), label=key, c=colors[i])
+            # ax1.plot(np.log2(smooth(self.history[key].history["loss"][starting_from:])), label=key, c=colors[i])
+            # ax2.plot(np.log2(smooth(self.history[key].history["val_loss"][starting_from:])), label=key, c=colors[i])
+            ax1.plot(smooth(self.history[key].history["loss"][starting_from:]), label=key, c=colors[i])
+            ax2.plot(smooth(self.history[key].history["val_loss"][starting_from:]), label=key, c=colors[i])
 
         best_models_loss = self.test_df.sort_values("model")
         ax3 = sns.boxplot(x = "val_loss", y = "model", data = best_models_loss, palette="rainbow")
@@ -201,8 +208,12 @@ class Beholder:
         self.models[name].save_weights(self._folderpath + "/" + name + ".weights.h5")
         
     
-    def load(self, filepaths):
-        pass
+    def load(self, folder):
+        for filename in os.listdir(folder):
+            if filename.endswith(".h5") and filename.find("weight") == -1:
+                model_name = filename[:filename.find(".h5")]
+                self.models[model_name] = load_model(folder + "/" + filename)
+                print("[Beholder] Load", model_name, "from", folder + "/" + filename)
     
 
 def train_model(seq_len, n_clust, coord, layers, 
