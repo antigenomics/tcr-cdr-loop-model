@@ -108,7 +108,7 @@ class Beholder:
     
     
     def train(self, n_epochs, batch_size=16, verbose=0, lr=0):
-        reduce_lr = ReduceLROnPlateau(monitor='val_loss', factor=0.2, patience=3, cooldown=1, min_lr=0.00002)
+        reduce_lr = ReduceLROnPlateau(monitor='val_loss', factor=0.2, patience=3, cooldown=0, min_lr=0.00002)
         # early_stop = EarlyStopping(patience=5)
         print("[Beholder] Training...")
         for model_name in self.models:
