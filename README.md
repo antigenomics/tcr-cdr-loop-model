@@ -39,6 +39,8 @@ There are no critical differences for CDR sequences, therefore for each sequence
 
 <img src="plots/maxmin_len11_x_proc.png">
 
+<img src="plots/maxmin_len11_y_proc.png">
+
 Then we choose the mean coordinate values (like in CDRs) per sequence.
 
 Numbers of the sequences / unique sequences per length per data type:
